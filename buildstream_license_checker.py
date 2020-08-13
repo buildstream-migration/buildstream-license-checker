@@ -8,6 +8,8 @@ results.
 """
 
 import argparse
+import os.path
+import sys
 
 DESCRIBE_TEXT = f"""
 A license-checking utility for buildstream projects.
@@ -20,15 +22,22 @@ and machine-readable summary files.
 VALID_DEPTYPES = ["none", "run", "all"]
 
 
+def abort():
+    """Print short message and exit"""
+    print("Aborting buildstream-license-checker")
+    sys.exit(1)
+
+
 def main():
     """Collect dependency information, run lincensechecks, and output results"""
     arg_parser = get_arg_parser()
     args = arg_parser.parse_args()
 
-    print(f"Deps: {args.deps}")
-    print(f"track: {args.track}")
-    print(f"output: {args.output}")
-    print(f"work: {args.work}")
+    if args.work == args.output:
+        print("ERROR: cannot use same path for output directory and working directory.")
+    prepare_dir(args.work)
+    prepare_dir(args.output, needs_empty=True)
+
     print(f"elements: " + ", ".join(args.element_list))
 
 
@@ -86,6 +95,34 @@ def get_arg_parser():
     )
 
     return arg_parser
+
+
+def prepare_dir(directory_name, needs_empty=False):
+    """Create a needed directory, if it doesn't exist already"""
+    directory_name = os.path.abspath(directory_name)
+    try:
+        os.makedirs(directory_name, exist_ok=True)
+    except PermissionError as pmn_error:
+        print(pmn_error)
+        print(
+            "Unable to create directory. Insufficient permissions to create"
+            f" {directory_name}."
+        )
+        print("Please check permissions, or try a different directory path.")
+        abort()
+    except FileExistsError as fe_error:
+        print(fe_error)
+        print(
+            f"Unable to create directory. {directory_name} already"
+            " exists and does not appear to be a directory."
+        )
+        print("Please delete the existing file, or try a different directory path.")
+        abort()
+    # test if empty
+    if needs_empty:
+        if os.listdir(directory_name):
+            print(f"ERROR: directory {directory_name} is not empty.")
+            abort()
 
 
 if __name__ == "__main__":
