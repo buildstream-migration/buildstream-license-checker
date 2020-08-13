@@ -40,6 +40,13 @@ def main():
     prepare_dir(args.output, needs_empty=True)
 
     dependency_list = get_dependencies_from_bst_show(args.deps, args.element_list)
+    if args.track:
+        track_dependencies(dependency_list)
+        # regenerate dependency_list, since keys may now have updated
+        dependency_list = get_dependencies_from_bst_show(args.deps, args.element_list)
+    else:
+        confirm_track_not_needed(dependency_list)
+
     for thing in dependency_list:
         print(thing)
 
@@ -148,6 +155,35 @@ def get_dependencies_from_bst_show(depstype, element_list):
             {"name": line_split[0], "full-key": line_split[1], "state": line_split[2]}
         )
     return return_list
+
+
+def track_dependencies(dependency_list):
+    """Runs BuildStream's track command to track all dependencies"""
+    command_args = ["bst", "track"]
+    command_args += [dep["name"] for dep in dependency_list]
+
+    print("\nRunning bst track command, to track dependencies")
+    bst_track_return_code = subprocess.call(command_args)
+    if bst_track_return_code != 0:
+        print(f"bst track command failed, with exit code {bst_track_return_code}")
+        abort()
+
+
+def confirm_track_not_needed(dependency_list):
+    """Checks whether dependencies need to be tracked. If they do, aborts script."""
+    untracked_deps = []
+    for dep in dependency_list:
+        if dep["state"] == "no reference":
+            untracked_deps.append(dep["name"])
+    if untracked_deps:
+        print("\n\nInconsistent Pipeline")
+        print("Refs are missing for the following elements:")
+        for dep_name in untracked_deps:
+            print("    " + dep_name)
+        print("Please track the elements and re-run the script.")
+        print('(Alternatively, use the "--track" option to automatically perform')
+        print("tracking on all elements and dependencies before they are scanned.)")
+        abort()
 
 
 if __name__ == "__main__":
