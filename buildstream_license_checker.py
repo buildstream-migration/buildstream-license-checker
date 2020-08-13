@@ -10,6 +10,7 @@ results.
 import argparse
 import os.path
 import sys
+import subprocess
 
 DESCRIBE_TEXT = f"""
 A license-checking utility for buildstream projects.
@@ -38,7 +39,9 @@ def main():
     prepare_dir(args.work)
     prepare_dir(args.output, needs_empty=True)
 
-    print(f"elements: " + ", ".join(args.element_list))
+    dependency_list = get_dependencies_from_bst_show(args.deps, args.element_list)
+    for thing in dependency_list:
+        print(thing)
 
 
 def get_arg_parser():
@@ -123,6 +126,28 @@ def prepare_dir(directory_name, needs_empty=False):
         if os.listdir(directory_name):
             print(f"ERROR: directory {directory_name} is not empty.")
             abort()
+
+
+def get_dependencies_from_bst_show(depstype, element_list):
+    """Run bst show and extract dependency information"""
+    command_args = ["bst", "show", "--deps", depstype]
+    command_args += ["--format", "%{name}||%{full-key}||%{state}"]
+    command_args += element_list
+
+    print("Running 'bst show' command, to collect list of dependency elements.")
+    bst_show_result = subprocess.run(command_args, stdout=subprocess.PIPE, text=True)
+    if bst_show_result.returncode != 0:
+        print(f"bst show command failed, with exit code {bst_show_result.returncode}")
+        abort()
+
+    return_list = []
+    bst_show_output = bst_show_result.stdout
+    for line in bst_show_output.rstrip().split("\n"):
+        line_split = line.rsplit("||", 2)
+        return_list.append(
+            {"name": line_split[0], "full-key": line_split[1], "state": line_split[2]}
+        )
+    return return_list
 
 
 if __name__ == "__main__":
