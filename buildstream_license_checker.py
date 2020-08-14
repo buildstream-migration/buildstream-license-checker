@@ -13,6 +13,7 @@ import sys
 import subprocess
 import tempfile
 import shutil
+import json
 
 DESCRIBE_TEXT = f"""
 A license-checking utility for buildstream projects.
@@ -23,6 +24,13 @@ information. Results are bundled into an output directory, along with human-read
 and machine-readable summary files.
 """
 VALID_DEPTYPES = ["none", "run", "all"]
+INVALID_LICENSE_VALUES = {
+    "",
+    "UNKNOWN",
+    "GENERATED FILE",
+    "*No copyright* UNKNOWN",
+    "*No copyright* GENERATED FILE",
+}
 
 
 def get_args():
@@ -162,7 +170,7 @@ class BuildStreamLicenseChecker:
                 try:
                     tmp_prefix = f"tmp-checkout--{dep.name.replace('/','-')}"
                     with tempfile.TemporaryDirectory(
-                            dir=self.work_path, prefix=tmp_prefix
+                        dir=self.work_path, prefix=tmp_prefix
                     ) as tmpdir:
                         print(f"Checking out source code for {dep.name} in {tmpdir}")
                         dep.checkout_source(tmpdir)
@@ -179,6 +187,20 @@ class BuildStreamLicenseChecker:
                     )
                     abort()
             shutil.copy(dep.work_path, dep.out_path)
+
+    def update_license_lists(self):
+        """Iterates through dependencies, to read their licensecheck output files and
+        update their "license_outputs" attribute."""
+        for dep in self.depslist:
+            dep.update_license_list()
+
+    def output_summary_machine_readable(self):
+        """Outputs a machine_readable summary of the dependencies and their licenses"""
+        machine_output_filename = os.path.join(
+            self.output_path, "license_check_summary.json"
+        )
+        with open(machine_output_filename, mode="w") as outfile:
+            json.dump([dep.dict() for dep in self.depslist], outfile, indent=2)
 
 
 class DependencyElement:
@@ -201,6 +223,9 @@ class DependencyElement:
         self.work_path = os.path.join(work_dir, filename)
         self.out_path = os.path.join(output_dir, filename)
 
+        # Prepare for final summary
+        self.license_outputs = set()
+
     def checkout_source(self, checkout_path):
         """Checks out the source-code of a specified element, into a specified
         directory"""
@@ -209,6 +234,7 @@ class DependencyElement:
         )
         return_code2 = subprocess.call(["bst", "workspace", "close", self.name])
         if return_code1 != 0 or return_code2 != 0:
+            print(self.work_path)
             print(f"checking out source code for {self.name} failed")
             abort()
 
@@ -224,6 +250,29 @@ class DependencyElement:
             print(f"Running licensecheck failed for {self.work_path}")
             abort()
         os.rename(partfile_name, self.work_path)
+
+    def dict(self):
+        """Returns a dictionary with the key information about the dependency"""
+        return {
+            "dependency name": self.name,
+            "dependency full_key": self.full_key,
+            "licensecheck_output": sorted(list(self.license_outputs)),
+        }
+
+    def update_license_list(self):
+        """Reads the licensecheck output files, and updates the license_outputs
+        attribute"""
+
+        def stripline(line):
+            line = line.rsplit("\t", 2)[1]
+            line = line.replace("GENERATED FILE", "")
+            line = line.strip()
+            return line
+
+        with open(self.work_path, mode="r") as openfile:
+            self.license_outputs = {stripline(line) for line in openfile}
+
+        self.license_outputs.difference_update(INVALID_LICENSE_VALUES)
 
 
 def prepare_dir(directory_name, needs_empty=False):
@@ -269,6 +318,8 @@ def main():
     checker.get_dependencies_from_bst_show()
     checker.track_or_validate_tracking()
     checker.get_licensecheck_results()
+    checker.update_license_lists()
+    checker.output_summary_machine_readable()
 
 
 if __name__ == "__main__":
