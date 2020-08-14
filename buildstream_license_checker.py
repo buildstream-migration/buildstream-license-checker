@@ -11,6 +11,7 @@ import argparse
 import os.path
 import sys
 import subprocess
+import tempfile
 
 DESCRIBE_TEXT = f"""
 A license-checking utility for buildstream projects.
@@ -31,15 +32,21 @@ def abort():
 
 def main():
     """Collect dependency information, run lincensechecks, and output results"""
+    # Parse Arguments
     arg_parser = get_arg_parser()
     args = arg_parser.parse_args()
 
+    # Setup folders
     if args.work == args.output:
         print("ERROR: cannot use same path for output directory and working directory.")
-    prepare_dir(args.work)
-    prepare_dir(args.output, needs_empty=True)
+    # prepare_dir returns an absolute path for the directory
+    workdir = prepare_dir(args.work)
+    outputdir = prepare_dir(args.output, needs_empty=True)
 
+    # Get dependencies
     dependency_list = get_dependencies_from_bst_show(args.deps, args.element_list)
+
+    # Tracking
     if args.track:
         track_dependencies(dependency_list)
         # regenerate dependency_list, since keys may now have updated
@@ -47,8 +54,10 @@ def main():
     else:
         confirm_track_not_needed(dependency_list)
 
-    for thing in dependency_list:
-        print(thing)
+    # Create raw output files
+    # Filenames will be recorded in the dependency dictionaries
+    for dep in dependency_list:
+        get_licensecheck_results(dep, workdir)
 
 
 def get_arg_parser():
@@ -116,7 +125,7 @@ def prepare_dir(directory_name, needs_empty=False):
         print(pmn_error)
         print(
             "Unable to create directory. Insufficient permissions to create"
-            f" {directory_name}."
+            f" {directory_name}"
         )
         print("Please check permissions, or try a different directory path.")
         abort()
@@ -133,6 +142,8 @@ def prepare_dir(directory_name, needs_empty=False):
         if os.listdir(directory_name):
             print(f"ERROR: directory {directory_name} is not empty.")
             abort()
+    # directory name was changed by abspath, need to return the new name
+    return directory_name
 
 
 def get_dependencies_from_bst_show(depstype, element_list):
@@ -183,6 +194,63 @@ def confirm_track_not_needed(dependency_list):
         print("Please track the elements and re-run the script.")
         print('(Alternatively, use the "--track" option to automatically perform')
         print("tracking on all elements and dependencies before they are scanned.)")
+        abort()
+
+
+def get_licensecheck_results(dep, work_dir):
+    """Check out dependency sources, and run licensecheck software.
+    Save licensecheck output as a file, and collect the filename."""
+    # Establish license output filename, and check if it already exists
+    dep["license_output_file_path"] = os.path.join(
+        work_dir,
+        dep["name"].replace("/", "-") + "--" + dep["full-key"] + ".licensecheck_output",
+    )
+    # if the output file already exists (with the correct hash key), then skip the rest
+    if os.path.isfile(dep["license_output_file_path"]):
+        return
+    # otherwise:
+    try:
+        tmp_prefix = f"tmp-checkout--{dep['name'].replace('/','-')}"
+        with tempfile.TemporaryDirectory(dir=work_dir, prefix=tmp_prefix) as tmpdir:
+            checkout_path = os.path.abspath(tmpdir)
+
+            print(f"Checking out source code for {dep['name']} in {tmpdir}")
+            checkout_source(dep["name"], checkout_path)
+
+            print(f"Running license check software for {dep['name']}")
+            create_license_raw_output(
+                filepath=dep["license_output_file_path"], checkout_path=checkout_path
+            )
+    except PermissionError as pmn_error:
+        print(pmn_error)
+        print(
+            "Unable to create directory. Insufficient permissions to create files"
+            f" in {work_dir}"
+        )
+        print("Please check permissions, or try a different working directory.")
+        abort()
+
+
+def checkout_source(dep_name, checkout_path):
+    """Checks out the source-code of a specified element, into a specified directory"""
+    return_code1 = subprocess.call(
+        ["bst", "--colors", "workspace", "open", dep_name, checkout_path]
+    )
+    return_code2 = subprocess.call(["bst", "workspace", "close", dep_name])
+    if return_code1 != 0 or return_code2 != 0:
+        print(f"checking out source code for {dep_name} failed")
+        abort()
+
+
+def create_license_raw_output(filepath, checkout_path):
+    """Runs the actual license-checking software, to collect licenses from a specified
+    directory"""
+    with open(filepath, mode="w") as outfile:
+        return_code = subprocess.call(
+            ["licensecheck", "-mr", "."], cwd=checkout_path, stdout=outfile
+        )
+    if return_code != 0:
+        print(f"Running licensecheck failed for {filepath}")
         abort()
 
 
