@@ -137,6 +137,7 @@ class BuildStreamLicenseChecker:
             self.depslist.append(
                 DependencyElement(line, self.work_dir, self.output_dir)
             )
+        self.depslist.sort()
 
     def fetch_and_track(self):
         """Either track all dependencies, or confirm that tracking isn't needed, then
@@ -146,40 +147,43 @@ class BuildStreamLicenseChecker:
         should be followed by another call to get_dependencies.from_bst_show()
         (to update the dependency list with the new keys and new statuses).
         """
+
+        def track_dependencies(depnames_list):
+            """Runs BuildStream's track command to track all dependencies"""
+            command_args = ["bst", "track"]
+            command_args += depnames_list
+
+            print("\nRunning bst track command, to track dependencies")
+            bst_track_return_code = subprocess.call(command_args)
+            if bst_track_return_code != 0:
+                print(
+                    f"bst track command failed, with exit code {bst_track_return_code}"
+                )
+                abort()
+
+        def fetch_sources(depnames_list):
+            """Runs Buildstream's fetch command to confirm that that sources are correctly
+            fetched. (Fetch will fail for elements whith sources which are unavailable,
+            But elements with no sources will fetch successfully with no error)."""
+            command_args = ["bst", "--on-error", "continue", "fetch", "--deps", "none"]
+            command_args += depnames_list
+            print("\nRunning bst fetch command, to fetch sources")
+            subprocess.call(command_args)
+            # No need to check return code. Failures will be recognized by their
+            # status in bst show results.
+
         # First, produce a list of all dependencies by name, suitable for supplying to
         # subprocess.call()
         depnames = [dep.name for dep in self.depslist]
         # Either track all dependencies, or confirm that tracking isn't needed
         if self.track:
-            self.track_dependencies(depnames)
+            track_dependencies(depnames)
         else:
             self.confirm_no_tracking_needed()
         # Attempt bst fetch on all dependencies
-        self.fetch_sources(depnames)
+        fetch_sources(depnames)
         # Note: this function is intended to update refs and changes the status of
         # date with the new full-keys and new statuses.
-
-    def track_dependencies(self, depnames_list):
-        """Runs BuildStream's track command to track all dependencies"""
-        command_args = ["bst", "track"]
-        command_args += depnames_list
-
-        print("\nRunning bst track command, to track dependencies")
-        bst_track_return_code = subprocess.call(command_args)
-        if bst_track_return_code != 0:
-            print(f"bst track command failed, with exit code {bst_track_return_code}")
-            abort()
-
-    def fetch_sources(self, depnames_list):
-        """Runs Buildstream's fetch command to confirm that that sources are correctly
-        fetched. (Fetch will fail for elements whith sources which are unavailable,
-        But elements with no sources will fetch successfully with no error)."""
-        command_args = ["bst", "--on-error", "continue", "fetch", "--deps", "none"]
-        command_args += depnames_list
-        print("\nRunning bst fetch command, to fetch sources")
-        subprocess.call(command_args)
-        # No need to check return code. Failures will be recognized by their
-        # status in bst show results.
 
     def confirm_no_tracking_needed(self):
         """Checks whether dependencies need to be tracked. If they do, aborts script."""
@@ -241,6 +245,9 @@ class DependencyElement:
         # Prepare for final summary
         self.license_outputs = set()
 
+    def __lt__(self, other):
+        return self.name < other.name
+
     def get_licensecheck_result(self, work_dir):
         """Check out dependency sources, and run licensecheck software.
         Save licensecheck output as a file in workdir, and copy file to outputdir."""
@@ -261,10 +268,12 @@ class DependencyElement:
                 ) as tmpdir:
                     print(f"Checking out source code for {self.name} in {tmpdir}")
                     self.checkout_source(tmpdir)
+                    # sets checkout_status if successful
 
-                    print(f"Running license check software for {self.name}")
-                    self.create_license_raw_output(tmpdir)
-                    shutil.copy(self.work_path, self.out_path)
+                    if self.checkout_status == CheckoutStatus.checkout_succeeded:
+                        print(f"Running license check software for {self.name}")
+                        self.create_license_raw_output(tmpdir)
+                        shutil.copy(self.work_path, self.out_path)
 
             except PermissionError as pmn_error:
                 print(pmn_error)
@@ -281,12 +290,11 @@ class DependencyElement:
         return_code = subprocess.call(
             ["bst", "--colors", "workspace", "open", self.name, checkout_path]
         )
-        if return_code == 0:
-            self.checkout_status = (
-                CheckoutStatus.checkout_succeeded
-                if return_code == 0
-                else CheckoutStatus.checkout_failed
-            )
+        self.checkout_status = (
+            CheckoutStatus.checkout_succeeded
+            if return_code == 0
+            else CheckoutStatus.checkout_failed
+        )
         subprocess.call(["bst", "workspace", "close", self.name])
         # (no need to check return code for 'bst workspace close'. Script should
         # proceed in the same way whether it fails or not)
