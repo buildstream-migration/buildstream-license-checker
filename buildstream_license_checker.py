@@ -32,6 +32,8 @@ INVALID_LICENSE_VALUES = {
     "*No copyright* UNKNOWN",
     "*No copyright* GENERATED FILE",
 }
+MACHINE_OUTPUT_FILENAME = "license_check_summary.json"
+HUMAN_OUTPUT_FILENAME = "license_check_summary.html"
 
 
 class CheckoutStatus(Enum):
@@ -214,11 +216,18 @@ class BuildStreamLicenseChecker:
 
     def output_summary_machine_readable(self):
         """Outputs a machine_readable summary of the dependencies and their licenses"""
-        machine_output_filename = os.path.join(
-            self.output_dir, "license_check_summary.json"
-        )
-        with open(machine_output_filename, mode="w") as outfile:
+        machine_output_path = os.path.join(self.output_dir, MACHINE_OUTPUT_FILENAME)
+        with open(machine_output_path, mode="w") as outfile:
             json.dump([dep.dict() for dep in self.depslist], outfile, indent=2)
+
+    def output_summary_human_readable(self):
+        """Outputs a human_readable summary of the dependencies and their licenses"""
+        human_output_path = os.path.join(self.output_dir, HUMAN_OUTPUT_FILENAME)
+        with open(human_output_path, mode="w") as outfile:
+            outfile.write(HTML_START)
+            for dep in self.depslist:
+                outfile.write(dep.html_output())
+            outfile.write(HTML_END)
 
 
 class DependencyElement:
@@ -321,6 +330,27 @@ class DependencyElement:
             "licensecheck_output": sorted(list(self.license_outputs)),
         }
 
+    def html_output(self):
+        """Returns an html div, with the key information about the dependency"""
+        return_string = DEP_HTML_START.format(
+            dependency_name=self.name,
+            dependency_checkout_status=self.checkout_status.value,
+            full_key_1=self.full_key[:32],
+            full_key_2=self.full_key[32:],
+            output_basename=os.path.basename(self.out_path),
+        )
+        if self.checkout_status == CheckoutStatus.checkout_succeeded:
+            return_string += LICENSE_HTML_START
+            for license_line in self.license_outputs:
+                return_string += LICENSE_HTML_LINE.format(license_line=license_line)
+            return_string += LICENSE_HTML_END
+        elif self.checkout_status == CheckoutStatus.checkout_failed:
+            return_string += CHECKOUT_FAILED_HTML
+        elif self.checkout_status == CheckoutStatus.fetch_failed:
+            return_string += FETCH_FAILED_HTML
+        return_string += DEP_HTML_END
+        return return_string
+
     def update_license_list(self):
         """Reads the licensecheck output files, and updates the license_outputs
         attribute"""
@@ -394,7 +424,80 @@ def main():
     # Check out sources and run license scan for each element
     checker.get_licensecheck_results()
     checker.update_license_lists()
+
+    # Output results
     checker.output_summary_machine_readable()
+    checker.output_summary_human_readable()
+
+
+HTML_START = """<!DOCTYPE html>
+<html>
+<head>
+<title>BuildStream license checker - Results Summary</title>
+</head>
+<style>
+.dependency {
+  margin: 1em;
+  border-width: thin;
+  border-style: solid;
+}
+.dep_fields {
+  border-bottom-width: thin;
+  border-bottom-style: solid;
+  padding: 5px;
+}
+.licensecheck_output {
+  padding: 5px;
+}
+.license_list {
+  column-count: 2
+}
+.license_item {
+  break-inside: avoid
+}
+</style>
+<body>
+"""
+HTML_END = """
+</body>
+</html>
+"""
+DEP_HTML_START = """
+  <div class="dependency">
+    <div class="dep_fields">
+      <table>
+        <tr><td><strong>Name:</strong></td><td>{dependency_name}</td></tr>
+        <tr><td><strong>Checkout:</strong></td><td>{dependency_checkout_status}</td></tr>
+        <tr><td><strong>Full&nbsp;Key:</strong></td><td>{full_key_1}<wbr>{full_key_2}</td></tr>
+      </table>
+    </div>
+    <div class="licensecheck_output">
+"""
+DEP_HTML_END = """
+    </div>
+  </div>
+"""
+LICENSE_HTML_START = """
+      <strong>Licences: </strong><br>
+      <a href="{output_basename}" title="See the detailed license scan output.">(see full output)</a>
+      <ul class="license_list">
+"""
+LICENSE_HTML_LINE = """        <li class="license_item">{license_line}</li>"""
+LICENSE_HTML_END = """      </ul>"""
+CHECKOUT_FAILED_HTML = """
+<strong>NO RESULTS:</strong> No sources checked out.
+<p style="max-width: 45em;"><small> The script was unable to check out any sources for this element.
+If the element does not have any sources (eg a stack element, or a filter element)
+then this is the expected result. Otherwise, this result may mean there has been an
+error.</small></p>
+"""
+FETCH_FAILED_HTML = """
+<strong>NO RESULTS:</strong> 'bst fetch' command failed.
+<p style="max-width: 45em;"><small> BuildStream's fetch command was unable to fetch
+sources for this element. This could mean that there is an error in the element
+(such a mistake in the source URL), or it could mean that an external resource is not
+currently available for download.</small></p>
+"""
 
 
 if __name__ == "__main__":
