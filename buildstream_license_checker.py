@@ -14,6 +14,7 @@ import subprocess
 import tempfile
 import shutil
 import json
+import re
 from enum import Enum
 
 DESCRIBE_TEXT = f"""
@@ -97,6 +98,20 @@ def get_args():
             " changed."
         ),
     )
+    arg_parser.add_argument(
+        "-b",
+        "--blacklist",
+        required=False,
+        metavar="BLACKLIST_FILENAME",
+        help=(
+            "Filename for a list of 'blacklisted' licenses. Each line in the file is"
+            " interpreted as a regular expression, as defined in python's re module."
+            " Lines which start with a hash (#) are treated as comments. Any license"
+            " which matches any of the regular expressions will be highlighted as an"
+            " error in the output summaries. Note: the regular expression does not need"
+            " to match the entire license. A partial match will count."
+        ),
+    )
 
     return arg_parser.parse_args()
 
@@ -111,6 +126,19 @@ class BuildStreamLicenseChecker:
         self.work_dir = prepare_dir(args.work)
         self.output_dir = prepare_dir(args.output, needs_empty=True)
         self.depslist = []
+        self.blacklist = []
+        self.blacklist_violations = {}
+
+        if args.blacklist:
+            with open(args.blacklist, mode="r") as blacklist_file:
+                # take each line from the blacklist file, and strip trailing linebreaks
+                # then compile each line as a regular expression
+                # unless the line starts with a hash. (Treated as comments)
+                self.blacklist = [
+                    re.compile(line.rstrip("\n"))
+                    for line in blacklist_file
+                    if not line.startswith("#")
+                ]
 
     def get_dependencies_from_bst_show(self):
         """Run bst show and extract dependency information.
@@ -213,12 +241,22 @@ class BuildStreamLicenseChecker:
         update their "license_outputs" attribute."""
         for dep in self.depslist:
             dep.update_license_list()
+            self.blacklist_violations.update(
+                dep.get_blacklist_violations(self.blacklist)
+            )
 
     def output_summary_machine_readable(self):
         """Outputs a machine_readable summary of the dependencies and their licenses"""
         machine_output_path = os.path.join(self.output_dir, MACHINE_OUTPUT_FILENAME)
         with open(machine_output_path, mode="w") as outfile:
-            json.dump([dep.dict() for dep in self.depslist], outfile, indent=2)
+            json.dump(
+                {
+                    "blacklist violations": self.blacklist_violations,
+                    "licenses detected": [dep.dict() for dep in self.depslist],
+                },
+                outfile,
+                indent=2,
+            )
 
     def output_summary_human_readable(self):
         """Outputs a human_readable summary of the dependencies and their licenses"""
@@ -292,6 +330,20 @@ class DependencyElement:
                     " or try a different working directory."
                 )
                 abort()
+
+    def get_blacklist_violations(self, blacklist):
+        """Compares the dependency's set licenses against a list of regular expressions.
+        Returns a dictionary containing a list of any licenses that match one or more
+        of the regular expressions."""
+        violations = []
+        for license_string in self.license_outputs:
+            for license_expression in blacklist:
+                if license_expression.search(license_string):
+                    violations += [license_string]
+                    break
+        if violations:
+            return {self.name: violations}
+        return {}
 
     def checkout_source(self, checkout_path):
         """Checks out the source-code of a specified element, into a specified
