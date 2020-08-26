@@ -134,11 +134,11 @@ class DependencyElement:
     def get_dict(self):
         """Returns a dictionary with the key information about the dependency"""
         return {
-            "dependency name": self.name,
-            "full key": self.full_key,
-            "checkout status": self.checkout_status.value,
-            "licensecheck output": sorted(list(self.license_outputs)),
-            "output_filename": os.path.basename(self.out_path),
+            "dependency-name": self.name,
+            "full-key": self.full_key,
+            "checkout-status": self.checkout_status.value,
+            "detected-licenses": sorted(list(self.license_outputs)),
+            "output-filename": os.path.basename(self.out_path),
         }
 
     def update_license_list(self):
@@ -147,7 +147,7 @@ class DependencyElement:
 
         def stripline(line):
             line = line.rsplit("\t", 2)[1]
-            line = line.replace("GENERATED FILE", "")
+            line = line.replace("[generated file]", "")
             line = line.strip()
             return line
 

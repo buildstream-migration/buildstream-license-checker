@@ -3,31 +3,30 @@ from buildstream_license_checker.dependency_element import CheckoutStatus
 
 def write_html_output(results_dict, html_output_path):
     """Outputs a human readable html file listing the license scan results."""
-    html_blacklist_results = ""
     html_dependencies = ""
 
     # get html for dependencies
-    for dep in results_dict["licenses detected"]:
+    for dep in results_dict["dependency-list"]:
         # basic info for each dependency
         dep_start = DEP_HTML_START.format(
-            dependency_name=dep["dependency name"],
-            dependency_checkout_status=dep["checkout status"],
-            full_key_1=dep["full key"][:32],
-            full_key_2=dep["full key"][32:],
+            dependency_name=dep["dependency-name"],
+            dependency_checkout_status=dep["checkout-status"],
+            full_key_1=dep["full-key"][:32],
+            full_key_2=dep["full-key"][32:],
         )
 
         # licensecheck results
         dep_middle = ""
-        if dep["checkout status"] == CheckoutStatus.checkout_succeeded.value:
+        if dep["checkout-status"] == CheckoutStatus.checkout_succeeded.value:
             dep_middle += LICENSE_HTML_START.format(
-                output_basename=dep["output_filename"]
+                output_basename=dep["output-filename"]
             )
-            for license_line in dep["licensecheck output"]:
+            for license_line in dep["detected-licenses"]:
                 dep_middle += LICENSE_HTML_LINE.format(license_line=license_line)
             dep_middle += LICENSE_HTML_END
-        elif dep["checkout status"] == CheckoutStatus.checkout_failed.value:
+        elif dep["checkout-status"] == CheckoutStatus.checkout_failed.value:
             dep_middle += CHECKOUT_FAILED_HTML
-        elif dep["checkout status"] == CheckoutStatus.fetch_failed.value:
+        elif dep["checkout-status"] == CheckoutStatus.fetch_failed.value:
             dep_middle += FETCH_FAILED_HTML
 
         # pull all the info together (for each dependency)
@@ -38,7 +37,6 @@ def write_html_output(results_dict, html_output_path):
     # write html to output file
     with open(html_output_path, mode="w") as outfile:
         outfile.write(HTML_START)
-        outfile.write(html_blacklist_results)
         outfile.write(html_dependencies)
         outfile.write(HTML_END)
 

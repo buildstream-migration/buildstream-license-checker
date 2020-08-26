@@ -72,7 +72,7 @@ class LicenseChecker:
             dep_dict = dep.get_dict()
             licenses_detected.append(dep_dict)
         return {
-            "licenses detected": licenses_detected,
+            "dependency-list": licenses_detected,
         }
 
     def get_dependencies_from_bst_show(self):
