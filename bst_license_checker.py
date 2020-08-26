@@ -99,17 +99,15 @@ def get_args():
         ),
     )
     arg_parser.add_argument(
-        "-b",
-        "--blacklist",
+        "-i",
+        "--ignorelist",
         required=False,
-        metavar="BLACKLIST_FILENAME",
+        metavar="IGNORELIST_FILENAME",
         help=(
-            "Filename for a list of 'blacklisted' licenses. Each line in the file is"
-            " interpreted as a regular expression, as defined in python's re module."
-            " Lines which start with a hash (#) are treated as comments. Any license"
-            " which matches any of the regular expressions will be highlighted as an"
-            " error in the output summaries. Note: the regular expression does not need"
-            " to match the entire license. A partial match will count."
+            "Filename for a list of elements names to ignore. Ignored elements will not"
+            " be fetched, tracked or scanned for licenses. Element names in the ignore"
+            " list file should be separated by line breaks (one element name per line)."
+            " Lines which start with a hash (#) are treated as comments."
         ),
     )
 

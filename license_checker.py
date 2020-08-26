@@ -9,7 +9,6 @@ the license scan."""
 import os.path
 import subprocess
 import sys
-import re
 from dependency_element import DependencyElement
 from dependency_element import abort
 
@@ -25,16 +24,15 @@ class LicenseChecker:
         self.work_dir = prepare_dir(args.work)
         self.output_dir = prepare_dir(args.output, needs_empty=True)
         self.depslist = []
-        self.blacklist = []
+        self.ignorelist = []
 
-        if args.blacklist:
-            with open(args.blacklist, mode="r") as blacklist_file:
-                # take each line from the blacklist file, and strip trailing linebreaks
-                # then compile each line as a regular expression
+        if args.ignorelist:
+            with open(args.ignorelist, mode="r") as ignorelist_file:
+                # take each line from the ignore list, strip trailing linebreaks
                 # unless the line starts with a hash. (Treated as comments)
-                self.blacklist = [
-                    re.compile(line.rstrip("\n"))
-                    for line in blacklist_file
+                self.ignorelist = [
+                    line.rstrip("\n")
+                    for line in ignorelist_file
                     if not line.startswith("#")
                 ]
 
@@ -57,30 +55,13 @@ class LicenseChecker:
             dep.update_license_list()
 
     def get_results(self):
-        """Returns a dictionary containing a breakdown of licenses found, by element.
-        Also generates a report of any blacklisted licenses that have been found, and
-        includes this in the results dictionary."""
+        """Returns a dictionary containing a breakdown of licenses found, by element."""
         licenses_detected = []
-        blacklist_violations = {}
         for dep in self.depslist:
             # get list of all licenses:
             dep_dict = dep.get_dict()
             licenses_detected.append(dep_dict)
-
-            # get blacklist_violations
-            if self.blacklist:
-                violations = []
-                for license_string in dep_dict["licensecheck output"]:
-                    for license_expression in self.blacklist:
-                        if license_expression.search(license_string):
-                            violations += [license_string]
-                            break
-                if violations:
-                    blacklist_violations.update(
-                        {dep_dict["dependency name"], violations}
-                    )
         return {
-            "blacklist violations": blacklist_violations,
             "licenses detected": licenses_detected,
         }
 
@@ -112,9 +93,9 @@ class LicenseChecker:
         # process output
         bst_show_output = bst_show_result.stdout
         for line in bst_show_output.rstrip().split("\n"):
-            self.depslist.append(
-                DependencyElement(line, self.work_dir, self.output_dir)
-            )
+            dep = DependencyElement(line, self.work_dir, self.output_dir)
+            if dep.name not in self.ignorelist:
+                self.depslist.append(dep)
         self.depslist.sort()
 
     def track_and_fetch(self):
