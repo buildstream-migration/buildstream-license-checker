@@ -1,4 +1,3 @@
-#! /usr/bin/python3
 """Contains the LicenseChecker class, as used by the bst_license_checker script.
 The LicenseChecker class stores the relevant arugments supplied to the script, and the
 methods for extracting license information. (Except for those methods delegated to the
@@ -9,8 +8,8 @@ the license scan."""
 import os.path
 import subprocess
 import sys
-from dependency_element import DependencyElement
-from dependency_element import abort
+from buildstream_license_checker.dependency_element import DependencyElement
+from buildstream_license_checker.dependency_element import abort
 
 MACHINE_OUTPUT_FILENAME = "license_check_summary.json"
 HUMAN_OUTPUT_FILENAME = "license_check_summary.html"
@@ -19,15 +18,26 @@ HUMAN_OUTPUT_FILENAME = "license_check_summary.html"
 class LicenseChecker:
     """Abstract class to scan contain data for license-scanning"""
 
-    def __init__(self, args):
-        self.args = args
-        self.work_dir = prepare_dir(args.work)
-        self.output_dir = prepare_dir(args.output, needs_empty=True)
+    def __init__(
+            self,
+            element_list,
+            work_dir,
+            output_dir,
+            depstype="run",
+            track_deps=False,
+            ignorelist_filename=None,
+    ):
+        self.element_list = element_list
         self.depslist = []
-        self.ignorelist = []
+        self.work_dir = prepare_dir(work_dir)
+        self.output_dir = prepare_dir(output_dir, needs_empty=True)
 
-        if args.ignorelist:
-            with open(args.ignorelist, mode="r") as ignorelist_file:
+        self.depstype = depstype
+        self.track_deps = track_deps
+
+        self.ignorelist = []
+        if ignorelist_filename:
+            with open(ignorelist_filename, mode="r") as ignorelist_file:
                 # take each line from the ignore list, strip trailing linebreaks
                 # unless the line starts with a hash. (Treated as comments)
                 self.ignorelist = [
@@ -77,9 +87,9 @@ class LicenseChecker:
             "Running 'bst show' command, to collect list of dependency elements.",
             file=sys.stderr,
         )
-        command_args = ["bst", "show", "--deps", self.args.deps]
+        command_args = ["bst", "show", "--deps", self.depstype]
         command_args += ["--format", "%{name}||%{full-key}||%{state}"]
-        command_args += self.args.element_list
+        command_args += self.element_list
         bst_show_result = subprocess.run(
             command_args, stdout=subprocess.PIPE, text=True
         )
@@ -137,7 +147,7 @@ class LicenseChecker:
         # subprocess.call()
         depnames = [dep.name for dep in self.depslist]
         # Either track all dependencies, or confirm that tracking isn't needed
-        if self.args.track:
+        if self.track_deps:
             track_dependencies(depnames)
         else:
             self.confirm_no_tracking_needed()

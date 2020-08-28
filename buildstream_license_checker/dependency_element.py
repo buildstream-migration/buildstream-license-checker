@@ -1,4 +1,3 @@
-#! /usr/bin/python3
 """Contains the DependencyElement class, as used by the bst_license_checker script.
 A DependencyElement object stores information about exactly one buildstream element,
 and has the methods to extract and return license information for that one element."""
