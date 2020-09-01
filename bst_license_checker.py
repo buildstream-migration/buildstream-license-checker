@@ -63,6 +63,12 @@ def get_args():
         metavar="ELEMENT_NAMES",
         help="One or more elements to be checked.",
     )
+    arg_parser.add_argument(
+        "-t",
+        "--track",
+        action="store_true",
+        help="Run the bst track command on each dependency before checking licenses.",
+    )
     default_depstype = "run"
     arg_parser.add_argument(
         "-d",
@@ -72,25 +78,20 @@ def get_args():
         choices=VALID_DEPTYPES,
         help=(
             "The type of dependencies to scan. Will be passed directly to the"
-            " 'bst show' command. Choose from: "
-        )
-        + ", ".join(VALID_DEPTYPES)
-        + f". Defaults to: {default_depstype}.",
+            f" 'bst show' command. Defaults to {default_depstype}. Choose from: "
+            + ", ".join(VALID_DEPTYPES)
+        ),
     )
     arg_parser.add_argument(
-        "-t",
-        "--track",
-        action="store_true",
-        help="Run the bst track command on each dependency before checking.",
-    )
-    arg_parser.add_argument(
-        "-o",
-        "--output",
-        required=True,
-        metavar="OUTPUT_DIRECTORY",
+        "-i",
+        "--ignorelist",
+        required=False,
+        metavar="IGNORELIST_FILENAME",
         help=(
-            "The path to an output directory, in which to store license results. Will"
-            " be created if it doesn't already exist. Directory must be empty."
+            "Filename for a list of elements names to ignore. Ignored elements will not"
+            " be fetched, tracked or scanned for licenses. Element names in the ignore"
+            " list file should be separated by line breaks (one element name per line)."
+            " Lines which start with a hash (#) are treated as comments."
         ),
     )
     arg_parser.add_argument(
@@ -106,15 +107,13 @@ def get_args():
         ),
     )
     arg_parser.add_argument(
-        "-i",
-        "--ignorelist",
-        required=False,
-        metavar="IGNORELIST_FILENAME",
+        "-o",
+        "--output",
+        required=True,
+        metavar="OUTPUT_DIRECTORY",
         help=(
-            "Filename for a list of elements names to ignore. Ignored elements will not"
-            " be fetched, tracked or scanned for licenses. Element names in the ignore"
-            " list file should be separated by line breaks (one element name per line)."
-            " Lines which start with a hash (#) are treated as comments."
+            "The path to an output directory, in which to store license results. Will"
+            " be created if it doesn't already exist. Directory must be empty."
         ),
     )
 
