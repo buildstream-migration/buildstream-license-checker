@@ -63,14 +63,26 @@ class DependencyElement:
     def get_licensecheck_result(self, work_dir):
         """Check out dependency sources, and run licensecheck software.
         Save licensecheck output as a file in workdir, and copy file to outputdir."""
-        # if output file already exists, update checkout_status and do nothing else
-        if os.path.isfile(self.work_path):
+        # if output file already exists in the working directory and has the correct
+        # full-key, then we know that the source hasn't changed since the last license
+        # scan, and we can re-use the cached file.
+
+        # (Exception: if an element's full-key is represented as a string of question
+        # marks it means that the proper full-key is unknown (usually because not all
+        # of the element's build dependencies have been tracked). In that scenario we
+        # can't use the cached file, because we cannot know whether the source has
+        # changed since the last license scan.)
+
+        if os.path.isfile(self.work_path) and "????" not in self.full_key:
+            # update checkout_status and do nothing else
             self.checkout_status = CheckoutStatus.checkout_succeeded
             shutil.copy(self.work_path, self.out_path)
-        # if fetch still needed, assume that 'fetch' has already failed, and don't
-        # bother attempting to check out sources
+
+        # if we don't have an existing file and fetch is still needed, assume that
+        # 'bst fetch' has already failed, and don't attempt to check out sources
         elif self.state == "fetch needed":
             self.checkout_status = CheckoutStatus.fetch_failed
+
         # otherwise, since outputfile doesn't exist, try to create it
         else:
             try:
