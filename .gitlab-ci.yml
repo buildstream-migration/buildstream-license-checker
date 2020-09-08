@@ -1,0 +1,86 @@
+variables:
+  # Docker Images
+  DOCKER_REGISTRY: "registry.gitlab.com/douglaswinship/buildstream-licence-checker"
+  DOCKER_BST_1: "${DOCKER_REGISTRY}/bst_1:0.0.2"
+  DOCKER_BST_MASTER: "${DOCKER_REGISTRY}/bst_master:0.0.2"
+  #
+  # Setting XDG_CACHE_HOME ensures that BuildStream will use this folder for its caches 
+  # Further down, the same folder is defined as a GitLab cache, so it will be used as
+  # a shared cache amongst the GitLab CI jobs.
+  XDG_CACHE_HOME: "${CI_PROJECT_DIR}/cache"
+  # BuildStream license checker also uses a cache, which it calls the working directory.
+  # Setting a default location inside the XDG_CACHE_HOME directory, ensures that it will
+  # also be shared between GitLab CI jobs.
+  WORKDIR: "${CI_PROJECT_DIR}/cache/license_checker_work_dir"
+  OUTPUTDIR: "${CI_PROJECT_DIR}/license_checker_output_dir"
+
+before_script:
+  - pip3 install .
+
+.no_license_checker_cache:
+  # Sets the script's working directory to a location not in the Gitlab cache
+  # ie ensures the script won't have access to cached scan results from previous jobs,
+  # and sources will be scanned from scratch.
+  #
+  # (This will only affect the license checker's cache. BuildStream will still have
+  # access to the BuildStream cache from previous jobs)
+  variables:
+    WORKDIR: "${CI_PROJECT_DIR}/license_checker_work_dir"
+
+.test_license_checker_on_a_git_repo:
+  script:
+    - git clone ${SOURCE_REPO_URL} ${SOURCE_REPO_DIR} && cd ${SOURCE_REPO_DIR}
+    - git checkout "${BRANCH}"
+
+    - OPTS="-o ${OUTPUTDIR} -w ${WORKDIR} --deps ${DEPS}"
+    - bst_license_checker ${OPTS} $TARGETS
+  cache:
+    # This sets a default cache key, but individual jobs may override it.
+    # (Using different caches for different jobs avoids the problem of jobs running
+    # in parallel and overwriting each other's updates to the cache.)
+    key: buildstream_license_checker
+    paths:
+      - ${XDG_CACHE_HOME}
+  artifacts:
+    when: always
+    paths:
+      - ${CI_PROJECT_DIR}/cache/buildstream/logs
+      - ${CI_PROJECT_DIR}/OUTPUT_DIR
+      - ${CI_PROJECT_DIR}/WORK_DIR
+
+.freedesktop-sdk-quickcheck:
+  extends:
+    - .test_license_checker_on_a_git_repo
+  variables:
+    SOURCE_REPO_URL: https://gitlab.com/freedesktop-sdk/freedesktop-sdk.git
+    SOURCE_REPO_DIR: freedesktop-sdk
+    DEPS: none
+    TARGETS: bootstrap/dwz.bst bootstrap/make.bst
+
+bst-1-freedesktop-sdk-quickcheck:
+  extends:
+    - .freedesktop-sdk-quickcheck
+  image: $DOCKER_BST_1
+  variables:
+    BRANCH: master 
+  cache:
+    key: buildstream_license_checker_bst_1
+
+bst-1-freedesktop-sdk-quickcheck--no-cache:
+  extends:
+    - bst-1-freedesktop-sdk-quickcheck
+    - .no_license_checker_cache
+
+bst-master-freedesktop-sdk-quickcheck:
+  extends:
+    - .freedesktop-sdk-quickcheck
+  image: $DOCKER_BST_MASTER
+  variables:
+    BRANCH: freedesktop-sdk-20.08beta.1-buildstream-1.93.4
+  cache:
+    key: buildstream_license_checker_bst_master
+
+bst-master-freedesktop-sdk-quickcheck--no-cache:
+  extends:
+    - bst-master-freedesktop-sdk-quickcheck
+    - .no_license_checker_cache

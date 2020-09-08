@@ -1,0 +1,5 @@
+FROM docker.io/buildstream/buildstream:dev
+
+RUN dnf install -y licensecheck
+RUN git clone https://gitlab.com/BuildStream/bst-plugins-experimental.git && pip install bst-plugins-experimental/
+CMD bash

@@ -93,6 +93,11 @@ class DependencyElement:
 
         if os.path.isfile(self.work_path) and "????" not in self.full_key:
             # update checkout_status and do nothing else
+            print(
+                f"Skipping license scan for {self.name}. \tFound results from previous"
+                " scan in working directory.",
+                file=sys.stderr,
+            )
             self.checkout_status = CheckoutStatus.checkout_succeeded
             shutil.copy(self.work_path, self.out_path)
 
