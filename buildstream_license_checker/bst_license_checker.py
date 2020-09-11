@@ -123,7 +123,7 @@ def get_args():
         help=(
             "License results will be created here first, and saved. Can be reused (does"
             " not need to be emptied between invocations). Can be used as a cache:"
-            " previously processed results will be reused if the hash-key has not"
+            " previously processed results will be reused if the cache key has not"
             " changed."
         ),
     )

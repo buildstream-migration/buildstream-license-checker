@@ -1,21 +1,37 @@
 # BuildStream License Checker
 
-This project is intended to produce a license-checking utility for BuildStream 
-projects.
+BuildStream License Checker is a license-checking utility for BuildStream projects.
 
 The utility will check out the sources of a given element into a temporary
-folder, run a license-scanning tool, and then process the results.
+folder, use license-scanning software to collect license informaiton, and then
+process the results.
 
-The utility will be written as a python script, using subprocess to call
-buildstream functions and licensecheck.
+The utility is written as a python script, using subprocess to invoke
+BuildStream functions and the license scanning software.
 
 ### Install
 
+First, ensure that BuildStream and the license scanning software are installed.
+(See below for details of the license scanning software).
+
 Buildstream License Checker is a python package, and can be installed with pip. Navigate
-to the top level `buildstream_license_checker` directory, and run the command
+to the BuildStream License Checker's top level directory (the directory that contains
+`setup.py`), and run the command
 ```
 pip3 install .
 ```
+
+### License scanning software
+
+The license scanning software currently used is "licensecheck", as found on
+cpan: https://metacpan.org/pod/distribution/App-Licensecheck/bin/licensecheck
+
+licensecheck can be built from source and installed as a perl script, or you may be
+able to install from your package manager. eg
+```
+sudo apt install licensecheck
+```
+
 
 ### Usage
 
@@ -43,7 +59,7 @@ optional arguments:
                         License results will be created here first, and saved.
                         Can be reused (does not need to be emptied between
                         invocations). Can be used as a cache: previously
-                        processed results will be reused if the hash-key has
+                        processed results will be reused if the cache key has
                         not changed.
   -i IGNORELIST_FILENAME, --ignorelist IGNORELIST_FILENAME
                         Filename for a list of elements names to ignore.
@@ -91,7 +107,7 @@ file. In this way, the working directory can serve as a cache.
 
 5) The script summarises the output files and produces a list of detected
 licenses for each element. The results are returned in a dictionary object. The
-dictionry object is used to generate a machine-readable json summary file, and a
+dictionary object is used to generate a machine-readable json summary file, and a
 human readable html summary file. The json format is a direct json dump of the
 results, and has the following format:
 
@@ -130,12 +146,22 @@ results, and has the following format:
 
 ### License scanning software
 
-The license scanning software currently used, is "licensecheck", as found on
+The license scanning software currently used is "licensecheck", as found on
 cpan: https://metacpan.org/pod/distribution/App-Licensecheck/bin/licensecheck
+
+Licensecheck is available on several linux distributions through the pakckage manager,
+or can be acquired from cpan and built from source as a perl script.
 
 ### Notes
 
-`bst source checkout` will fail if the source needs to be tracked. To proceed,
-either run the buildstream `track` command on the element manually, or use the
-`--track` option. (Note that `--track` will track every element and dependency,
-and can update existing refs.)
+* Checking out the a source will fail if the source needs to be tracked. To proceed,
+  either run the buildstream `track` command on the element manually, or use the
+  `--track` option. (Note that `--track` will track every element and dependency,
+  and can update existing refs.)
+
+* Elements which have no sources (stack elements, compose elements, etc) will be
+  detected as errors by the script. This happens because the script has no way of
+  knowing which elements have no sources, and it encounters a BuildStream error when it
+  tries to check out sources that don't exist. These errors do not cause the script to
+  fail, but they can significantly slow down execution. To save time, elements that have
+  no sources should be added to an ignore-list file. (See the --ignorelist option)

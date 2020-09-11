@@ -46,16 +46,16 @@ HUMAN_OUTPUT_FILENAME = "license_check_summary.html"
 
 
 class LicenseChecker:
-    """Abstract class to scan contain data for license-scanning"""
+    """Abstract class to perform a license scan and to store and return scan results"""
 
-    def __init__(
-            self,
-            element_list,
-            work_dir,
-            output_dir,
-            depstype="run",
-            track_deps=False,
-            ignorelist_filename=None,
+    def __init__(  # pylint: disable=too-many-arguments
+        self,
+        element_list,
+        work_dir,
+        output_dir,
+        depstype="run",
+        track_deps=False,
+        ignorelist_filename=None,
     ):
         self.element_list = element_list
         self.depslist = []
@@ -101,9 +101,7 @@ class LicenseChecker:
             # get list of all licenses:
             dep_dict = dep.get_dict()
             licenses_detected.append(dep_dict)
-        return {
-            "dependency-list": licenses_detected,
-        }
+        return {"dependency-list": licenses_detected}
 
     def get_dependencies_from_bst_show(self):
         """Run bst show and extract dependency information.

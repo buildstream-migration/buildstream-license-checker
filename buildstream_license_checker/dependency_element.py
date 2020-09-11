@@ -25,10 +25,10 @@ and has the methods to extract and return license information for that one eleme
 """
 
 import os.path
-import sys
-import subprocess
-import tempfile
 import shutil
+import subprocess
+import sys
+import tempfile
 from enum import Enum
 
 INVALID_LICENSE_VALUES = {
@@ -110,7 +110,7 @@ class DependencyElement:
             try:
                 tmp_prefix = f"tmp-checkout--{self.name.replace('/','-')}"
                 with tempfile.TemporaryDirectory(
-                        dir=work_dir, prefix=tmp_prefix
+                    dir=work_dir, prefix=tmp_prefix
                 ) as tmpdir:
                     print(
                         f"Checking out source code for {self.name} in {tmpdir}",
@@ -182,6 +182,7 @@ class DependencyElement:
         def stripline(line):
             line = line.rsplit("\t", 2)[1]
             line = line.replace("[generated file]", "")
+            line = line.replace("GENERATED FILE", "")
             line = line.strip()
             return line
 
