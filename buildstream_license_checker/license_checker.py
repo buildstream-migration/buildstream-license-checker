@@ -1,9 +1,39 @@
-"""Contains the LicenseChecker class, as used by the bst_license_checker script.
-The LicenseChecker class stores the relevant arugments supplied to the script, and the
-methods for extracting license information. (Except for those methods delegated to the
-DependencyElement class).
-The LicenseChecker object also stores and returns a dictionary containing the results of
-the license scan."""
+#
+#  Copyright 2020 Codethink Limited
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+#
+#  Authors:
+#        Douglas Winship <douglas.winship@codethink.co.uk>
+
+"""
+LicenseChecker
+==============
+
+The LicenseChecker class is responsible for perfoming the main operation of
+bst_license_checker: checking out source code for multiple elements and collecting
+license scan results.
+
+A LicenseChecker object stores the relevant arguments supplied to the script, and runs
+the bst show, bst track, and bst fetch commands as needed, identifying the relevant list
+of dependency elements which must be scanned. The object also stores the summary results
+from each license scan, and returns them as a single dictionary to be processed into the
+human readable and machine-readable outputs.
+
+The actual operation of checking out the source code and scanning for licenses is
+delegated to the DependencyElement class, each instance of which operates on a single
+element.
+"""
 
 import os.path
 import subprocess
