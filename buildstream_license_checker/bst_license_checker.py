@@ -1,5 +1,26 @@
 #! /usr/bin/python3
+#
+#  Copyright 2020 Codethink Limited
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+#
+#  Authors:
+#        Douglas Winship <douglas.winship@codethink.co.uk>
+
 """
+bst_license_checker (main)
+==========================
+
 This project is intended to produce a license-checking utility for BuildStream projects.
 
 The utility will check out the sources of a given element into a temporary folder, run a
@@ -102,7 +123,7 @@ def get_args():
         help=(
             "License results will be created here first, and saved. Can be reused (does"
             " not need to be emptied between invocations). Can be used as a cache:"
-            " previously processed results will be reused if the hash-key has not"
+            " previously processed results will be reused if the cache key has not"
             " changed."
         ),
     )
