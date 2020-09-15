@@ -30,6 +30,7 @@ import subprocess
 import sys
 import tempfile
 from enum import Enum
+from buildstream_license_checker.utils import abort
 
 INVALID_LICENSE_VALUES = {
     "",
@@ -47,12 +48,6 @@ class CheckoutStatus(Enum):
     fetch_failed = "fetch failed"
     checkout_failed = "checkout failed"
     checkout_succeeded = "checkout succeeded"
-
-
-def abort():
-    """Print short message and exit"""
-    print("Aborting buildstream-license-checker", file=sys.stderr)
-    sys.exit(1)
 
 
 class DependencyElement:

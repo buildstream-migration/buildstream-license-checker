@@ -39,7 +39,9 @@ import os.path
 import subprocess
 import sys
 from buildstream_license_checker.dependency_element import DependencyElement
-from buildstream_license_checker.dependency_element import abort
+from buildstream_license_checker.utils import abort
+from buildstream_license_checker.utils import confirm_buildstream_installed
+from buildstream_license_checker.utils import confirm_scanning_software_installed
 
 MACHINE_OUTPUT_FILENAME = "license_check_summary.json"
 HUMAN_OUTPUT_FILENAME = "license_check_summary.html"
@@ -57,6 +59,9 @@ class LicenseChecker:
         track_deps=False,
         ignorelist_filename=None,
     ):
+        confirm_buildstream_installed()
+        confirm_scanning_software_installed()
+
         self.element_list = element_list
         self.depslist = []
         self.work_dir = prepare_dir(work_dir)
