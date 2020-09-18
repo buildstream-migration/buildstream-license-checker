@@ -40,8 +40,9 @@ import subprocess
 import sys
 from buildstream_license_checker.dependency_element import DependencyElement
 from buildstream_license_checker.utils import abort
-from buildstream_license_checker.utils import confirm_buildstream_installed
 from buildstream_license_checker.utils import confirm_scanning_software_installed
+from buildstream_license_checker.buildstream_commands import bst_track_dependencies
+from buildstream_license_checker.buildstream_commands import bst_fetch_sources
 
 MACHINE_OUTPUT_FILENAME = "license_check_summary.json"
 HUMAN_OUTPUT_FILENAME = "license_check_summary.html"
@@ -59,7 +60,6 @@ class LicenseChecker:
         track_deps=False,
         ignorelist_filename=None,
     ):
-        confirm_buildstream_installed()
         confirm_scanning_software_installed()
 
         self.element_list = element_list
@@ -150,42 +150,22 @@ class LicenseChecker:
         (to update the dependency list with the new keys and new statuses).
         """
 
-        def track_dependencies(depnames_list):
-            """Runs BuildStream's track command to track all dependencies"""
-            command_args = ["bst", "track"]
-            command_args += depnames_list
-
-            print("\nRunning bst track command, to track dependencies", file=sys.stderr)
-            bst_track_return_code = subprocess.call(command_args)
+        # First, produce a list of all dependencies by name, suitable for supplying to
+        # subprocess.call()
+        depnames = tuple(dep.name for dep in self.depslist)
+        # Either track all dependencies, or confirm that tracking isn't needed
+        if self.track_deps:
+            bst_track_return_code = bst_track_dependencies(depnames)
             if bst_track_return_code != 0:
                 print(
                     f"bst track command failed, with exit code {bst_track_return_code}",
                     file=sys.stderr,
                 )
                 abort()
-
-        def fetch_sources(depnames_list):
-            """Runs Buildstream's fetch command to confirm that that sources are
-            correctly fetched. (Fetch will fail for elements with sources which are
-            unavailable, But elements with no sources will fetch successfully with no
-            error)."""
-            command_args = ["bst", "--on-error", "continue", "fetch", "--deps", "none"]
-            command_args += depnames_list
-            print("\nRunning bst fetch command, to fetch sources", file=sys.stderr)
-            subprocess.call(command_args)
-            # No need to check return code. Failures will be recognized by their
-            # status in bst show results.
-
-        # First, produce a list of all dependencies by name, suitable for supplying to
-        # subprocess.call()
-        depnames = [dep.name for dep in self.depslist]
-        # Either track all dependencies, or confirm that tracking isn't needed
-        if self.track_deps:
-            track_dependencies(depnames)
         else:
             self.confirm_no_tracking_needed()
         # Attempt bst fetch on all dependencies
-        fetch_sources(depnames)
+        bst_fetch_sources(depnames)
         # Note: this function is intended to update refs and change the status of
         # dependencies. After running this function, it is important to run
         # get_dependencies_from_bst_show() again, to update with the new full-keys

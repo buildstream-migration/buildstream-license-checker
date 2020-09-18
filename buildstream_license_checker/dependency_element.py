@@ -31,6 +31,7 @@ import sys
 import tempfile
 from enum import Enum
 from buildstream_license_checker.utils import abort
+from buildstream_license_checker.buildstream_commands import bst_checkout
 
 INVALID_LICENSE_VALUES = {
     "",
@@ -111,16 +112,20 @@ class DependencyElement:
                         f"Checking out source code for {self.name} in {tmpdir}",
                         file=sys.stderr,
                     )
-                    self.checkout_source(tmpdir)
-                    # sets checkout_status if successful
+                    checkout_dir = bst_checkout(self.name, tmpdir)
+                    # returns the location of the checked out source if successful
+                    # returns None otherwise
 
-                    if self.checkout_status == CheckoutStatus.checkout_succeeded:
+                    if checkout_dir:
+                        self.checkout_status = CheckoutStatus.checkout_succeeded
                         print(
                             f"Running license check software for {self.name}",
                             file=sys.stderr,
                         )
-                        self.create_license_raw_output(tmpdir)
+                        self.create_license_raw_output(checkout_dir)
                         shutil.copy(self.work_path, self.out_path)
+                    else:
+                        self.checkout_status = CheckoutStatus.checkout_failed
 
             except PermissionError as pmn_error:
                 print(pmn_error, file=sys.stderr)
@@ -131,21 +136,6 @@ class DependencyElement:
                     file=sys.stderr,
                 )
                 abort()
-
-    def checkout_source(self, checkout_path):
-        """Checks out the source-code of a specified element, into a specified
-        directory"""
-        return_code = subprocess.call(
-            ["bst", "--colors", "workspace", "open", self.name, checkout_path]
-        )
-        self.checkout_status = (
-            CheckoutStatus.checkout_succeeded
-            if return_code == 0
-            else CheckoutStatus.checkout_failed
-        )
-        subprocess.call(["bst", "workspace", "close", self.name])
-        # (no need to check return code for 'bst workspace close'. Script should
-        # proceed in the same way whether it fails or not)
 
     def create_license_raw_output(self, checkout_path):
         """Runs the actual license-checking software, to collect licenses from a
