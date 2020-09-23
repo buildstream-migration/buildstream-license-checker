@@ -5,9 +5,10 @@ variables:
   DOCKER_BST_MASTER: "${DOCKER_REGISTRY}/bst_master:0.0.2"
   #
   # Setting XDG_CACHE_HOME ensures that BuildStream will use this folder for its caches 
-  # Further down, the same folder is defined as a GitLab cache, so it will be used as
-  # a shared cache amongst the GitLab CI jobs.
+  # (Further down, the same folder is defined as a GitLab cache, so it will be used as
+  # a shared cache amongst the GitLab CI jobs.)
   XDG_CACHE_HOME: "${CI_PROJECT_DIR}/cache"
+
   # BuildStream license checker also uses a cache, which it calls the working directory.
   # Setting a default location inside the XDG_CACHE_HOME directory, ensures that it will
   # also be shared between GitLab CI jobs.
@@ -19,11 +20,8 @@ before_script:
 
 .no_license_checker_cache:
   # Sets the script's working directory to a location not in the Gitlab cache
-  # ie ensures the script won't have access to cached scan results from previous jobs,
-  # and sources will be scanned from scratch.
-  #
-  # (This will only affect the license checker's cache. BuildStream will still have
-  # access to the BuildStream cache from previous jobs)
+  # (ie ensures the script won't have access to cached scan results from previous jobs).
+  # Use this in a job to force it to scan all sources from scratch.
   variables:
     WORKDIR: "${CI_PROJECT_DIR}/license_checker_work_dir"
 
