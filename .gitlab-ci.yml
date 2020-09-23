@@ -1,9 +1,10 @@
 variables:
   # Docker Images
-  DOCKER_REGISTRY: "registry.gitlab.com/douglaswinship/buildstream-licence-checker"
-  DOCKER_BST_1: "${DOCKER_REGISTRY}/bst_1:0.0.2"
-  DOCKER_BST_MASTER: "${DOCKER_REGISTRY}/bst_master:0.0.2"
-  #
+  #   (CI_REGISTRY_IMAGE is a predefined envirnoment variable, which resolves to the 
+  #   container registry for the current project)
+  DOCKER_BST_1: "${CI_REGISTRY_IMAGE}/bst_1:0.0.2"
+  DOCKER_BST_MASTER: "${CI_REGISTRY_IMAGE}/bst_master:0.0.2"
+
   # Setting XDG_CACHE_HOME ensures that BuildStream will use this folder for its caches 
   # (Further down, the same folder is defined as a GitLab cache, so it will be used as
   # a shared cache amongst the GitLab CI jobs.)
