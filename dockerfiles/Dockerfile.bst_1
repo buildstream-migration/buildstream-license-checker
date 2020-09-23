@@ -1,0 +1,5 @@
+FROM docker.io/buildstream/buildstream:latest
+
+RUN dnf install -y licensecheck
+RUN git clone https://gitlab.com/BuildStream/bst-external.git && pip install bst-external/
+CMD bash
