@@ -99,7 +99,7 @@ class DependencyElement:
         # otherwise, since outputfile doesn't exist, try to create it
         else:
             try:
-                tmp_prefix = f"tmp-checkout--{self.name.replace('/','-')}"
+                tmp_prefix = f"tmp-checkout--{self.name.replace('/','-')}-"
                 with tempfile.TemporaryDirectory(
                     dir=work_dir, prefix=tmp_prefix
                 ) as tmpdir:
