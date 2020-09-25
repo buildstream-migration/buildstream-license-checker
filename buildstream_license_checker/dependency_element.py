@@ -29,8 +29,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from enum import Enum
-from buildstream_license_checker.utils import abort
+from buildstream_license_checker.utils import abort, CheckoutStatus
 from buildstream_license_checker.buildstream_commands import bst_checkout
 
 INVALID_LICENSE_VALUES = {
@@ -40,15 +39,6 @@ INVALID_LICENSE_VALUES = {
     "*No copyright* UNKNOWN",
     "*No copyright* GENERATED FILE",
 }
-
-
-class CheckoutStatus(Enum):
-    """Checkout Status"""
-
-    none = None
-    fetch_failed = "fetch failed"
-    checkout_failed = "checkout failed"
-    checkout_succeeded = "checkout succeeded"
 
 
 class DependencyElement:
@@ -117,20 +107,18 @@ class DependencyElement:
                         f"Checking out source code for {self.name} in {tmpdir}",
                         file=sys.stderr,
                     )
-                    checkout_dir = bst_checkout(self.name, tmpdir)
+                    self.checkout_status, checkout_dir = bst_checkout(self.name, tmpdir)
                     # returns the location of the checked out source if successful
-                    # returns None otherwise
+                    # along with the appropriate checkout status
+                    # checkout_dir will be "None" if there are no files checked out
 
                     if checkout_dir:
-                        self.checkout_status = CheckoutStatus.checkout_succeeded
                         print(
                             f"Running license check software for {self.name}",
                             file=sys.stderr,
                         )
                         self.create_license_raw_output(checkout_dir)
                         shutil.copy(self.work_path, self.out_path)
-                    else:
-                        self.checkout_status = CheckoutStatus.checkout_failed
 
             except PermissionError as pmn_error:
                 print(pmn_error, file=sys.stderr)

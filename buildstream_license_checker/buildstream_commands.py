@@ -28,8 +28,11 @@ uses the appropriate commands for the version.
 import os
 import subprocess
 import sys
-from buildstream_license_checker.utils import abort
-from buildstream_license_checker.utils import confirm_buildstream_installed
+from buildstream_license_checker.utils import (
+    abort,
+    CheckoutStatus,
+    confirm_buildstream_installed,
+)
 
 confirm_buildstream_installed()
 
@@ -58,10 +61,10 @@ def bst_checkout_v1(element_name, checkout_base_path):
     subprocess.call(["bst", "workspace", "close", element_name])
     if return_code != 0:
         # there was an error in checkout. Return "None" to signal failure.
-        return None
+        return CheckoutStatus.checkout_failed, None
     # otherwise return the checkout path
     # this process checks out files directly in the checkout base path
-    return checkout_base_path
+    return CheckoutStatus.checkout_succeeded, checkout_base_path
 
 
 def bst_checkout_v2(element_name, checkout_base_path):
@@ -80,12 +83,16 @@ def bst_checkout_v2(element_name, checkout_base_path):
         ]
     )
     if return_code != 0:
-        # there was an error in checkout. Return "None" to signal failure.
-        return None
-    # otherwise return the checkout path
-    # this process creates a new folder, UNDERNEATH the checkout base path
-    new_dir_name = os.listdir(checkout_base_path)[0]
-    return os.path.join(checkout_base_path, new_dir_name)
+        # there was an error in checkout.
+        return CheckoutStatus.checkout_failed, None
+    checkout_dir_contents = os.listdir(checkout_base_path)
+    if not checkout_dir_contents:
+        # If bst source checkout succeeded, but the checkout dir is empty:
+        return CheckoutStatus.no_sources, None
+    # otherwise, report a succesful checkout, and return the source directory
+    # (which is a new folder, created inside the checkout_base_path directory)
+    new_dir_path = os.path.join(checkout_base_path, checkout_dir_contents[0])
+    return CheckoutStatus.checkout_succeeded, new_dir_path
 
 
 ## set version-dependant variables ##

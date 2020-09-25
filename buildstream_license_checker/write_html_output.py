@@ -23,7 +23,7 @@ Write HTML output
 Outputs a human readable html file listing the license scan results.
 """
 
-from buildstream_license_checker.dependency_element import CheckoutStatus
+from buildstream_license_checker.utils import CheckoutStatus
 
 
 def write_html_output(results_dict, html_output_path):
@@ -53,6 +53,8 @@ def write_html_output(results_dict, html_output_path):
             dep_middle += CHECKOUT_FAILED_HTML
         elif dep["checkout-status"] == CheckoutStatus.fetch_failed.value:
             dep_middle += FETCH_FAILED_HTML
+        elif dep["checkout-status"] == CheckoutStatus.no_sources.value:
+            dep_middle += NO_SOURCES_HTML
 
         # pull all the info together (for each dependency)
         html_dependencies += dep_start
@@ -128,16 +130,29 @@ LICENSE_HTML_END = """      </ul>"""
 
 CHECKOUT_FAILED_HTML = """
 <strong>NO RESULTS:</strong> No sources checked out.
-<p style="max-width: 45em;"><small> The script was unable to check out any sources for this element.
-If the element does not have any sources (eg a stack element, or a filter element)
-then this is the expected result. Otherwise, this result may mean there has been an
-error.</small></p>
-"""
+<div style="max-width: 50em; font-size: small; text-align: justify;">
+<p>The script was unable to check out any sources for this element. If this is a
+BuildStream 1 project, and the element does not have any sources (eg a stack element, or
+a filter element) then this is the expected result.  Otherwise, this result may mean
+there has been an error.</p>
+<p> Consider using the --ignorelist option and adding this element to the ignore list,
+to speed up future scans.</p>
+</div> """
 
 FETCH_FAILED_HTML = """
 <strong>NO RESULTS:</strong> 'bst fetch' command failed.
-<p style="max-width: 45em;"><small> BuildStream's fetch command was unable to fetch
-sources for this element. This could mean that there is an error in the element
-(such a mistake in the source URL), or it could mean that an external resource is not
-currently available for download.</small></p>
-"""
+<div style="max-width: 50em; font-size: small; text-align: justify;">
+<p>BuildStream's fetch command was unable to fetch sources for this element. This could
+mean that there is an error in the element (such a mistake in the source URL), or it
+could mean that an external resource is not currently available for download.</p>
+</div> """
+
+NO_SOURCES_HTML = """
+<strong>NO RESULTS:</strong> Element has no sources to scan.
+<div style="max-width: 50em; font-size: small; text-align: justify;">
+<p> BuildStream's "source checkout" command completed succesfully, but the checkout
+folder was empty. This generally means that the element had no sources to check out.
+(eg a stack element, or a filter element).  </p>
+<p> Consider using the --ignorelist option and adding this element to the ignore list,
+to speed up future scans.</p>
+</div> """
