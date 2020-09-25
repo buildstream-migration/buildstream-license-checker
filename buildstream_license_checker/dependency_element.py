@@ -29,7 +29,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from buildstream_license_checker.utils import abort, CheckoutStatus
+from buildstream_license_checker.utils import abort, CheckoutStatus, echo
 from buildstream_license_checker.buildstream_commands import bst_checkout
 
 INVALID_LICENSE_VALUES = {
@@ -83,10 +83,9 @@ class DependencyElement:
 
         if os.path.isfile(self.work_path) and "????" not in self.full_key:
             # update checkout_status and do nothing else
-            print(
+            echo(
                 f"Skipping license scan for {self.name}. \tFound results from previous"
-                " scan in working directory.",
-                file=sys.stderr,
+                " scan in working directory."
             )
             self.checkout_status = CheckoutStatus.checkout_succeeded
             shutil.copy(self.work_path, self.out_path)
@@ -103,31 +102,24 @@ class DependencyElement:
                 with tempfile.TemporaryDirectory(
                     dir=work_dir, prefix=tmp_prefix
                 ) as tmpdir:
-                    print(
-                        f"Checking out source code for {self.name} in {tmpdir}",
-                        file=sys.stderr,
-                    )
+                    echo(f"Checking out source code for {self.name} in {tmpdir}")
                     self.checkout_status, checkout_dir = bst_checkout(self.name, tmpdir)
                     # returns the location of the checked out source if successful
                     # along with the appropriate checkout status
                     # checkout_dir will be "None" if there are no files checked out
 
                     if checkout_dir:
-                        print(
-                            f"Running license check software for {self.name}",
-                            file=sys.stderr,
-                        )
+                        echo(f"Running license check software for {self.name}")
                         self.create_license_raw_output(checkout_dir)
                         shutil.copy(self.work_path, self.out_path)
 
             except PermissionError as pmn_error:
-                print(pmn_error, file=sys.stderr)
-                print(
-                    "Unable to create directory. Insufficient permissions to"
-                    f" create files in {work_dir}\nPlease check permissions,"
-                    " or try a different working directory.",
-                    file=sys.stderr,
+                echo(pmn_error)
+                echo(
+                    "Unable to create directory."
+                    f" Insufficient permissions to create files in {work_dir}"
                 )
+                echo("Please check permissions, or try a different working directory.")
                 abort()
 
     def create_license_raw_output(self, checkout_path):
@@ -139,7 +131,7 @@ class DependencyElement:
                 ["licensecheck", "-mr", "."], cwd=checkout_path, stdout=outfile
             )
         if return_code != 0:
-            print(f"Running licensecheck failed for {self.work_path}", file=sys.stderr)
+            echo(f"Running licensecheck failed for {self.work_path}")
             abort()
         os.rename(partfile_name, self.work_path)
 

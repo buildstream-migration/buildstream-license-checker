@@ -37,9 +37,8 @@ element.
 
 import os.path
 import subprocess
-import sys
 from buildstream_license_checker.dependency_element import DependencyElement
-from buildstream_license_checker.utils import abort
+from buildstream_license_checker.utils import abort, echo
 from buildstream_license_checker.utils import confirm_scanning_software_installed
 from buildstream_license_checker.buildstream_commands import bst_track_dependencies
 from buildstream_license_checker.buildstream_commands import bst_fetch_sources
@@ -116,10 +115,7 @@ class LicenseChecker:
         self.depslist = []
 
         # call bst show
-        print(
-            "Running 'bst show' command, to collect list of dependency elements.",
-            file=sys.stderr,
-        )
+        echo("Running 'bst show' command to collect list of dependency elements.")
         command_args = ["bst", "show", "--deps", self.depstype]
         command_args += ["--format", "%{name}||%{full-key}||%{state}"]
         command_args += self.element_list
@@ -127,10 +123,7 @@ class LicenseChecker:
             command_args, stdout=subprocess.PIPE, text=True
         )
         if bst_show_result.returncode != 0:
-            print(
-                f"bst show command failed, with exit code {bst_show_result.returncode}",
-                file=sys.stderr,
-            )
+            echo(f"bst show command failed with exit code {bst_show_result.returncode}")
             abort()
 
         # process output
@@ -157,10 +150,7 @@ class LicenseChecker:
         if self.track_deps:
             bst_track_return_code = bst_track_dependencies(depnames)
             if bst_track_return_code != 0:
-                print(
-                    f"bst track command failed, with exit code {bst_track_return_code}",
-                    file=sys.stderr,
-                )
+                echo(f"bst track command failed with exit code {bst_track_return_code}")
                 abort()
         else:
             self.confirm_no_tracking_needed()
@@ -177,19 +167,13 @@ class LicenseChecker:
             dep.name for dep in self.depslist if dep.state == "no reference"
         ]
         if untracked_deps:
-            print("\n\nInconsistent Pipeline", file=sys.stderr)
-            print("Refs are missing for the following elements:", file=sys.stderr)
+            echo("\n\nInconsistent Pipeline")
+            echo("Refs are missing for the following elements:")
             for dep_name in untracked_deps:
-                print("    " + dep_name, file=sys.stderr)
-            print("Please track the elements and re-run the script.", file=sys.stderr)
-            print(
-                '(Alternatively, use the "--track" option to automatically perform',
-                file=sys.stderr,
-            )
-            print(
-                "tracking on all elements and dependencies before they are scanned.)",
-                file=sys.stderr,
-            )
+                echo(f"\t{dep_name}")
+            echo("Please track the elements and re-run the script.")
+            echo('(Alternatively, use the "--track" option to automatically perform')
+            echo("tracking on all elements and dependencies before they are scanned.)")
             abort()
 
 
@@ -199,33 +183,21 @@ def prepare_dir(directory_name, needs_empty=False):
     try:
         os.makedirs(directory_path, exist_ok=True)
     except PermissionError as pmn_error:
-        print(pmn_error, file=sys.stderr)
-        print(
-            "Unable to create directory. Insufficient permissions to create"
-            f" {directory_path}",
-            file=sys.stderr,
-        )
-        print(
-            "Please check permissions, or try a different directory path.",
-            file=sys.stderr,
-        )
+        echo(pmn_error)
+        echo("Unable to create directory.")
+        echo(f"Insufficient permissions to create {directory_path}")
+        echo("Please check permissions, or try a different directory path.")
         abort()
     except FileExistsError as fe_error:
-        print(fe_error, file=sys.stderr)
-        print(
-            f"Unable to create directory. {directory_path} already"
-            " exists and does not appear to be a directory.",
-            file=sys.stderr,
-        )
-        print(
-            "Please delete the existing file, or try a different directory path.",
-            file=sys.stderr,
-        )
+        echo(fe_error)
+        echo(f"Unable to create directory.")
+        echo("{directory_path} already exists and does not appear to be a directory.")
+        echo("Please delete the existing file, or try a different directory path.")
         abort()
     # test if empty
     if needs_empty:
         if os.listdir(directory_path):
-            print(f"ERROR: directory {directory_path} is not empty.", file=sys.stderr)
+            echo(f"ERROR: directory {directory_path} is not empty.")
             abort()
     # return the absolute path to the directory
     return directory_path
