@@ -43,9 +43,6 @@ from buildstream_license_checker.utils import confirm_scanning_software_installe
 from buildstream_license_checker.buildstream_commands import bst_track_dependencies
 from buildstream_license_checker.buildstream_commands import bst_fetch_sources
 
-MACHINE_OUTPUT_FILENAME = "license_check_summary.json"
-HUMAN_OUTPUT_FILENAME = "license_check_summary.html"
-
 
 class LicenseChecker:
     """Abstract class to perform a license scan and to store and return scan results"""
