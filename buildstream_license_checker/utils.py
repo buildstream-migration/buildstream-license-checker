@@ -24,6 +24,7 @@ Contains utility functions for the BuildStream License Checker tool
 
 import shutil
 import sys
+from enum import Enum
 
 
 def abort():
@@ -31,6 +32,16 @@ def abort():
 
     print("Aborting buildstream-license-checker", file=sys.stderr)
     sys.exit(1)
+
+
+class CheckoutStatus(Enum):
+    """Checkout Status"""
+
+    none = None
+    fetch_failed = "fetch failed"
+    checkout_failed = "checkout failed"
+    checkout_succeeded = "checkout succeeded"
+    no_sources = "no sources"
 
 
 def confirm_scanning_software_installed():
