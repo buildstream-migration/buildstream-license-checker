@@ -27,10 +27,10 @@ uses the appropriate commands for the version.
 
 import os
 import subprocess
-import sys
 from buildstream_license_checker.utils import (
     abort,
     CheckoutStatus,
+    echo,
     confirm_buildstream_installed,
 )
 
@@ -47,7 +47,7 @@ def get_version():
         major = int(versions[0])
         minor = int(versions[1])
     except (IndexError, ValueError, AttributeError):
-        print(f"Malformed version string: {version_text}.", file=sys.stderr)
+        echo(f"Malformed version string: {version_text}.")
         abort()
     return major, minor
 
@@ -110,10 +110,7 @@ elif (MAJOR_VERSION == 1 and MINOR_VERSION >= 93) or MAJOR_VERSION == 2:
     BST_FETCH_COMMANDS = ("bst", "--on-error", "continue")
     BST_FETCH_COMMANDS += ("source", "fetch", "--deps", "none")
 else:
-    print(
-        f"BuildStream version not supported: {MAJOR_VERSION}.{MINOR_VERSION}",
-        file=sys.stderr,
-    )
+    echo(f"BuildStream version not supported: {MAJOR_VERSION}.{MINOR_VERSION}")
     abort()
 
 
@@ -125,7 +122,7 @@ def bst_checkout(element_name, checkout_base_path):
 
 def bst_track_dependencies(depnames):
     """Runs BuildStream's track command to track all dependencies"""
-    print("\nRunning bst track command to track dependencies", file=sys.stderr)
+    echo("\nRunning bst track command to track dependencies")
     command_args = BST_TRACK_COMMANDS + depnames
     bst_track_return_code = subprocess.call(command_args)
     return bst_track_return_code
@@ -136,7 +133,7 @@ def bst_fetch_sources(depnames):
     correctly fetched. (Fetch will fail for elements with sources which are
     unavailable, But elements with no sources will fetch successfully with no
     error)."""
-    print("\nRunning bst fetch command, to fetch sources", file=sys.stderr)
+    echo("\nRunning bst fetch command, to fetch sources")
     command_args = BST_FETCH_COMMANDS + depnames
     subprocess.call(command_args)
     # No need to check return code. Failures will be recognized by their

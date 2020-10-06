@@ -27,10 +27,15 @@ import sys
 from enum import Enum
 
 
+def echo(printable_object):
+    """Wrapper script for print.
+    Saves including "file=sys.stderr" and "fulsh=True" in every status mesage"""
+    print(printable_object, file=sys.stderr, flush=True)
+
+
 def abort():
     """Print short message and exit"""
-
-    print("Aborting buildstream-license-checker", file=sys.stderr)
+    echo("Aborting buildstream-license-checker")
     sys.exit(1)
 
 
@@ -49,12 +54,9 @@ def confirm_scanning_software_installed():
     subprocess.run"""
     if not shutil.which("licensecheck"):
         # shutil.which will return None, if licensecheck isn't installed
-        print(
-            "Error, licensecheck does not seem to be installed."
-            " (licensecheck is a perl script which scans source code and detects"
-            " license information. bst_license_checker needs licensecheck to run)",
-            file=sys.stderr,
-        )
+        echo("Error, licensecheck does not seem to be installed.")
+        echo("(licensecheck is a perl script which scans source code and detects")
+        echo("license information. bst_license_checker needs licensecheck to run.)")
         abort()
 
 
@@ -62,9 +64,6 @@ def confirm_buildstream_installed():
     """Confirms that BuildStream is installed, so it can be run using subprocess.run"""
     if not shutil.which("bst"):
         # shutil.which will return None, if licensecheck isn't installed
-        print(
-            "Error, BuildStream does not seem to be installed."
-            "(bst_license_checker needs BuildStream to run)",
-            file=sys.stderr,
-        )
+        echo("Error, BuildStream does not seem to be installed.")
+        echo("(bst_license_checker needs BuildStream to run)")
         abort()
