@@ -1,0 +1,16 @@
+=======================
+bst_license_checker 0.1
+=======================
+
+First release of Buildstream License Checker
+
+  o Checks out the sources of selected elements.
+  o Invokes Licensecheck to scan the sources for license information.
+  o Summarises output in machine-readable and human-readable output files.
+  o Also scans elements' recursive dependencies (--deps none, run, or all).
+  o Caches scan results in the working directory, so they can be reused in
+    future if the element hasn't changed.
+  o Ignores elements if they're named in an ignore list (useful for saving time
+    on elements like stack elements, with no sources to check out).
+  o Works with Buildstream 1 and Buildstream master (autodetects which one is
+    currently installed, and uses correct commands for that version).

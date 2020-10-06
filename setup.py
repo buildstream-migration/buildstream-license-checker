@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="buildstream_license_checker",
-    version="0.0.1",
+    version="0.1",
     author="Douglas Winship",
     author_email="douglas.winship@codethink.co.uk",
     description="A tool for extracting license information for BuildStream projects",
