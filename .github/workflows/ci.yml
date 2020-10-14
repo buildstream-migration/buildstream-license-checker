@@ -1,0 +1,93 @@
+name: run license scan
+on:
+  - push
+jobs:
+  run-license-scan:
+    name:  ${{ matrix.level.level }} ${{ matrix.buildstream_version.version }}
+    runs-on: ubuntu-20.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        level:
+          - level: quickcheck
+            deps: none
+            targets: bootstrap/dwz.bst bootstrap/make.bst bootstrap/bootstrap.bst
+          - level: medium-check
+            deps: run
+            targets: bootstrap/bash.bst bootstrap/stripper.bst
+        buildstream_version:
+          - version: bst 1
+            repo_branch: master
+            buildstream_image: registry.gitlab.com/buildstream/buildstream-license-checker/bst_1:0.0.2
+          - version: bst master
+            repo_branch: freedesktop-sdk-20.08beta.1-buildstream-1.93.4
+            buildstream_image: registry.gitlab.com/buildstream/buildstream-license-checker/bst_master:0.0.2
+
+    env:
+      source_repo_url: https://gitlab.com/freedesktop-sdk/freedesktop-sdk.git
+      license_check_command: >-
+        bst_license_checker -w ../WORK_DIR -o ../OUTPUT_DIR
+        -d ${{ matrix.level.deps }} ${{ matrix.level.targets }} 
+      docker_options: >-
+        --privileged --mount type=bind,source="$(pwd)",destination=/root
+
+    steps:
+      - name: checkout license_checker
+        uses: actions/checkout@v2
+        with:
+          path: buildstream-license-checker
+
+      - name: create environment
+        run: |
+          git clone --branch ${{ matrix.buildstream_version.repo_branch }} \
+                    --depth 1 ${{ env.source_repo_url }} source_repo
+          mkdir WORK_DIR
+          mkdir OUTPUT_DIR
+                    
+      - name: create license_checker docker image
+        run: |
+          echo "-------------------------------------------------------"
+          echo "Installing buildstream-license checker inside container"
+          echo "-------------------------------------------------------"
+          docker run --name license_checker_container ${{ env.docker_options }} \
+                     --workdir=/root ${{ matrix.buildstream_version.buildstream_image }} \
+                     pip3 install ./buildstream-license-checker
+          echo "---------------------------------------------------------------------"
+          echo "Creating new docker image, with BuildStream Licnese Checker installed"
+          echo "---------------------------------------------------------------------"
+          docker commit license_checker_container license_checker_image
+
+      - name: run license checker in docker
+        run: |
+          echo "-----------------------"
+          echo "Running license checker"
+          echo "-----------------------"
+          docker run --rm ${{ env.docker_options }} --workdir=/root/source_repo \
+              license_checker_image:latest ${{ env.license_check_command }}
+
+      - name: Create output artifact
+        uses: actions/upload-artifact@v1
+        with:
+          name: license check output (${{ matrix.level.level }} ${{ matrix.buildstream_version.version }}
+          path: OUTPUT_DIR
+
+      - name: re-run license checker with cached results
+        run: |
+          rm -r OUTPUT_DIR
+          echo "-----------------------"
+          echo "Running license checker"
+          echo "-----------------------"
+          docker run --rm ${{ env.docker_options }} --workdir=/root/source_repo \
+              license_checker_image:latest ${{ env.license_check_command }} \
+              2>&1 | tee logfile
+          echo "-----------------------------------------------------------"
+          echo "This step should use cached results from the previous scan."
+          echo "Therefore this step should complete without ever running"
+          echo "the licensecheck software."
+          echo "Grepping through log, to confirm whether software was run:"
+          if grep "Running license check software" logfile;
+             then false;
+             else echo "...software was not run. Test passes."
+             echo "-----------------------------------------------------------";
+          fi
